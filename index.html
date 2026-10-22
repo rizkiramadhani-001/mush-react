@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="MUSH Field Console, dashboard monitoring fermentasi silase Pagi Farm." />
+    <meta name="theme-color" content="#f7f4ea" />
+    <title>MUSH Field Console - Pagi Farm</title>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-fallback" style="font-family:system-ui;max-width:430px;margin:0 auto;padding:24px;color:#16281f">
+        <p><strong>MUSH Field Console</strong></p>
+        <p>Memuat…</p>
+      </div>
+    </div>
+    <script>
+      setTimeout(function () {
+        var el = document.getElementById("boot-fallback");
+        if (el) {
+          el.innerHTML =
+            "<p><strong>MUSH Field Console</strong></p>" +
+            "<p>Modul tidak termuat. File dist ini dibuka langsung (file://) sehingga browser memblokir modul JavaScript.</p>" +
+            "<p>Buka lewat server lokal: <code>npm run dev</code> lalu buka alamat di terminal, atau <code>npm run build</code> dilanjut <code>npm run preview</code>.</p>";
+        }
+      }, 6000);
+    </script>
+    <noscript>
+      <p style="font-family:system-ui;padding:24px">
+        MUSH Field Console butuh JavaScript. Jalankan <code>npm run dev</code> lalu buka alamat yang
+        tampil di terminal.
+      </p>
+    </noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
