@@ -1,5 +1,18 @@
 # MUSH / Field Console · Ionic React
 
+Responsive dashboard for MUSH fermentation monitoring on mobile and desktop.
+
+**Stack:** React 19, Ionic React, Vite
+
+## Portfolio snapshot
+
+- One responsive product surface with separate mobile and desktop layouts
+- Mock and HTTP data adapters for local development and API integration
+- Route-based views for summary, batch detail, alerts, and account settings
+- Lint, unit test, and production build scripts
+
+**Related repositories:** [MUSH Server](https://github.com/rizkiramadhani-001/mush-server) · [MUSH ML](https://github.com/rizkiramadhani-001/mush-ml) · [MUSH landing page](https://github.com/rizkiramadhani-001/landing)
+
 Dashboard pemantauan fermentasi Pagi Farm, menggunakan Ionic React, React 19,
 dan Vite. Data contoh aktif secara default melalui `src/config.js`.
 
