@@ -29,7 +29,7 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
           <div>
             <strong>Hi, Pagi Farm</strong>
             <small className="muted">
-              Fermentasi hari {latest.hari}/{latest.total_hari}
+              Hari {latest.hari}/{latest.total_hari}
             </small>
           </div>
           <div className="greet-right">
@@ -51,7 +51,7 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
               </svg>
             </span>
             <strong>{latest.drum_id}</strong>
-            <small className="muted">{latest.label}</small>
+            <small className="muted">Batch aktif</small>
             <span className="dev-foot">
               <span className={c.target ? "mini-on" : "mini-off"}>{c.ml}</span>
             </span>
@@ -69,10 +69,10 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
               </svg>
             </span>
             <strong className="tabular">{fmtTemp(latest.suhu)}°C</strong>
-            <small className="muted">Suhu drum</small>
+            <small className="muted">Suhu</small>
             <span className="dev-foot">
               <span className="muted small">
-                Target {sLo}–{sHi}°C
+                {sLo}–{sHi}°C
               </span>
             </span>
           </div>
@@ -89,10 +89,10 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
               </svg>
             </span>
             <strong className="tabular">{latest.kelembapan}%</strong>
-            <small className="muted">Kelembapan</small>
+            <small className="muted">RH</small>
             <span className="dev-foot">
               <span className="muted small">
-                Target {hLo}–{hHi}%
+                {hLo}–{hHi}%
               </span>
             </span>
           </div>
@@ -111,7 +111,7 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
             </span>
             <strong className="tabular">{latest.progres_pct}%</strong>
             <small className="muted">
-              Hari {latest.hari}/{latest.total_hari} · {latest.berat.toFixed(1)} kg
+              Hari {latest.hari}/{latest.total_hari}
             </small>
             <span className="dev-foot">
               <span className="mini-on">{c.action}</span>
@@ -123,7 +123,7 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
           <div className="row-between" style={{ padding: "0 2px" }}>
             <strong>Batch saya</strong>
             <small className="muted">
-              {drums.length} batch{alerts > 0 ? ` · ${alerts} perlu cek` : ""}
+              {drums.length} batch{alerts > 0 ? ` · ${alerts} cek` : ""}
             </small>
           </div>
           <div className="batch-rows" style={{ marginTop: 8 }}>
@@ -141,11 +141,11 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
                   <span className="grow">
                     <strong>
                       {d.drum_id}
-                      {focused ? " · dipantau" : ""}
+                        {focused ? " · aktif" : ""}
                     </strong>
                     <br />
                     <small className="muted">
-                      Hari {d.hari}/{d.total_hari} · {fmtTemp(d.suhu)}°C · {d.kelembapan}% RH
+                      H{d.hari}/{d.total_hari} · {fmtTemp(d.suhu)}° · {d.kelembapan}%
                     </small>
                   </span>
                   <strong className={`tag ${cc.tone}`}>{cc.ml}</strong>
@@ -158,10 +158,8 @@ export default function Ringkasan({ latest, drums, onSelectDrum, onGo }) {
           </div>
         </section>
 
-        <SensorPanel latest={latest} />
+        <SensorPanel latest={latest} compact />
       </div>
     </>
   );
 }
-
-

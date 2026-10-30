@@ -12,7 +12,7 @@ const SYNC_ID = "mush-24h";
 
 const byMode = (mode) => SENSORS.filter((sensor) => sensor.mode === mode);
 
-export default function SensorPanel({ latest }) {
+export default function SensorPanel({ latest, compact = false }) {
   const continuous = byMode("continuous");
 
   return (
@@ -21,16 +21,20 @@ export default function SensorPanel({ latest }) {
         <h2>Sensor MUSH</h2>
         <span className="badge">{CONFIG.USE_MOCK ? "Data contoh" : "Telemetri"}</span>
       </div>
-      <p className="small muted">
-        Tren 24 jam untuk batch {latest?.drum_id ?? "belum dipilih"}. Arahkan kursor ke salah
-        satu grafik untuk membandingkan jam yang sama di semua sensor.
-      </p>
+      {!compact && (
+        <p className="small muted">
+          Tren 24 jam untuk batch {latest?.drum_id ?? "belum dipilih"}. Arahkan kursor ke salah
+          satu grafik untuk membandingkan jam yang sama di semua sensor.
+        </p>
+      )}
 
       <section className="sensor-group" aria-label="Sensor yang dipantau terus">
-        <h3 className="sensor-group-head">Dipantau selama fermentasi</h3>
-        <p className="small muted">
-          Suhu dan kelembapan ada di proposal; tekanan dan gas masih usulan tim.
-        </p>
+        <h3 className="sensor-group-head">{compact ? "Tren 24 jam" : "Dipantau selama fermentasi"}</h3>
+        {!compact && (
+          <p className="small muted">
+            Suhu dan kelembapan ada di proposal; tekanan dan gas masih usulan tim.
+          </p>
+        )}
         <div className="sensor-cards">
           {continuous.map((sensor) => {
             const status = sensorDetail(sensor.id, latest);
