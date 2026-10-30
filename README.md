@@ -1,39 +1,75 @@
 # MUSH React · Field Console
 
-Dashboard pemantauan fermentasi silase Pagi Farm. Satu aplikasi React yang
-menyesuaikan diri: tampilan ponsel di bawah 1024px, dasbor multi-halaman di
-layar lebar. Data produksi dibaca dari [`mush-server`](https://github.com/rizkiramadhani-001/mush-server).
+> Dashboard pemantauan fermentasi silase untuk Pagi Farm. Satu basis kode React
+> untuk ponsel dan desktop, terhubung langsung ke REST API MUSH.
 
-**Stack:** React 19 · Ionic React 9 · Vite 8 · Recharts · Three.js
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![Ionic](https://img.shields.io/badge/Ionic-9-3880FF?logo=ionic&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Status](https://img.shields.io/badge/status-prototype-f0b429)
 
-## Ringkasan
+## Konteks
 
-- Empat layar: ringkasan, detail batch, peringatan, dan akun.
-- Satu sumber ambang dan data contoh di `src/config.js`.
-- Adapter data ganda: `MockApi` untuk demo, `HttpApi` untuk server.
-- Polling 10 detik, berhenti saat tab tidak terlihat.
-- Tema terang/gelap mengikuti preferensi sistem dan tersimpan di perangkat.
-- Satuan metrik, tabel target, dan label status konsisten di mobile dan desktop.
+Fermentasi silase perlu dipantau terus-menerus: suhu dan kelembapan di luar
+target dapat menandakan kontaminasi atau fermentasi yang belum matang. MUSH
+mengubah pembacaan sensor drum menjadi dashboard yang bisa dibaca cepat oleh
+operator, baik dari ponsel di lapangan maupun layar lebar di ruang kontrol.
 
-## Alur data
+Repo ini adalah lapisan presentasi dari tiga bagian sistem:
 
 ```
-mush-server ──GET /api/drums──┐
-             ──GET /api/latest?drum=B-024──┐
-                                           ▼
-                                   src/api.js (HttpApi)
-                                           │  dipetakan ke snapshot view
-                                           ▼
-                                   App.jsx ──► views/components
+mush-react  ←  mush-server  ←  gateway ESP32 (suhu, kelembapan, tekanan, gas)
+                    │
+                    └──  mush-ml (prediksi 1 & 7 hari)
 ```
 
-`mush-react` tidak menulis data. Input bacaan dan event berasal dari gateway
-ESP32 lewat `mush-server`.
+- [MUSH Server](https://github.com/rizkiramadhani-001/mush-server) — API, Prisma, PostgreSQL
+- [MUSH ML](https://github.com/rizkiramadhani-001/mush-ml) — layanan prediksi FastAPI
+- [Landing page](https://github.com/rizkiramadhani-001/landing)
+
+## Yang ditonjolkan
+
+- **Satu UI, dua tata letak.** Tampilan ponsel di bawah 1024px, dasbor
+  multi-halaman di layar lebar, dengan state dan pemilihan batch yang sama.
+- **Adapter data terpisah dari view.** `MockApi` untuk demo tanpa backend,
+  `HttpApi` untuk server sungguhan; komponen tidak mengetahui asal data.
+- **Kontrak API dipetakan rapi.** Response v3.1 yang ramping diubah menjadi
+  snapshot view di satu tempat (`src/api.js`).
+- **Data hilang tidak dipalsukan.** Sensor tanpa nilai tampil "Belum ada data",
+  bukan nol atau status offline.
+- **Aksesibilitas dasar.** Skip link, label ARIA, navigasi keyboard, status
+  loading/error, dan tema terang/gelap yang mengikuti preferensi sistem.
+
+## Fitur
+
+| Layar | Isi |
+|---|---|
+| Ringkasan | Status batch, metrik suhu/kelembapan/berat, tren, daftar peringatan |
+| Detail Batch | Profil batch, progres fermentasi, timbangan, riwayat bacaan |
+| Peringatan | Batch di luar target, kejadian turunan, status sensor |
+| Akun | Status koneksi, batch aktif, pengaturan tema |
+
+- Route hash: `#/ringkasan`, `#/batch`, `#/peringatan`, `#/akun` — mendukung
+  tautan langsung, reload, dan Back/Forward browser.
+- Polling 10 detik; berhenti saat tab tidak terlihat dan menyegarkan saat tab
+  kembali aktif.
+- Tarik ke bawah atau tombol sinkronisasi untuk refresh manual, dengan toast.
+- Visual drum 3D dan grafik tren memakai Three.js dan Recharts.
+
+## Tech stack
+
+| Bagian | Teknologi |
+|---|---|
+| UI | React 19, Ionic React 9 |
+| Build | Vite 8 |
+| Grafik | Recharts 3 |
+| Visual | Three.js |
+| Gaya | CSS custom properties, tema terang/gelap |
+| Lint & tes | oxlint, `node:test` |
 
 ## Menjalankan
 
-Kebutuhan: Node.js 20+ dan `mush-server` yang berjalan di
-`http://127.0.0.1:8080`.
+Kebutuhan: Node.js 20.19+ dan `mush-server` di `http://127.0.0.1:8080`.
 
 ```bash
 npm install
@@ -41,9 +77,7 @@ npm run dev
 ```
 
 Buka `http://localhost:5173`. Vite meneruskan `/api` dan `/health` ke
-`127.0.0.1:8080`, sehingga browser tidak terkena CORS.
-
-Perintah lain:
+`127.0.0.1:8080`, jadi browser tidak terkena CORS.
 
 ```bash
 npm run lint
@@ -75,8 +109,6 @@ VITE_API_BASE=https://mush.pagifarm.id npm run build
 
 ## Koneksi ke `mush-server`
 
-`HttpApi` memanggil dua endpoint:
-
 | Endpoint | Dipakai untuk |
 |---|---|
 | `GET /api/drums` | Daftar batch `{ drums: [{ id }] }` |
@@ -96,45 +128,24 @@ jadi `src/api.js` memetakan response:
 | `label` | default produk; server belum menyimpan label batch |
 | `machine_sensors` | belum dikirim server, tampil "Belum ada data" |
 
-Deret grafik hanya dibuat bila semua nilai dalam log terisi, sehingga tidak ada
-angka pengganti saat sensor belum mengirim data.
-
-Bila `API_BASE` diisi langsung tanpa proxy, tambahkan origin dashboard ke
-`CORS_ORIGIN` di `mush-server`.
-
-## Layar dan navigasi
-
-Route hash: `#/ringkasan`, `#/batch`, `#/peringatan`, `#/akun`. Tautan langsung,
-reload, dan tombol Back/Forward browser bekerja tanpa aturan fallback server.
-
-- Di bawah 1024px: `Phone.jsx` dengan `IonPage`, header, konten yang bergulir,
-  dan navigasi bawah. Tarik ke bawah (`IonRefresher`) atau tombol tengah untuk
-  memperbarui data.
-- 1024px ke atas: `PcDashboard.jsx` dengan navigasi samping dan konten yang sama.
-  Hanya satu mode yang di-mount dalam satu waktu.
-- Pilihan batch disimpan di `localStorage` dan dipakai bersama oleh kedua mode.
-- Tema memakai `useSyncExternalStore`; nilai awal dari penyimpanan, lalu
-  preferensi OS.
+Deret grafik hanya dibuat bila semua nilai dalam log terisi. Bila `API_BASE`
+diisi langsung tanpa proxy, tambahkan origin dashboard ke `CORS_ORIGIN` di
+`mush-server`.
 
 ## Sensor dan telemetri
 
-Panel sensor mengikuti proposal IoT: DS18B20 untuk suhu, load cell 5 kg + HX711
-untuk berat, sensor tekan untuk gaya pres, dan limit switch untuk batas gerak.
-Kelembapan, tekanan, dan gas masih berstatus usulan tim; ambang dan satuannya
-tidak ditebak aplikasi.
+| Sensor | Sumber tampilan | Catatan |
+|---|---|---|
+| Suhu drum | `latest.suhu` | DS18B20, target 40–45°C |
+| Kelembapan | `latest.kelembapan` | Target 55–70% RH |
+| Berat kemasan | `latest.berat` | Load cell 5 kg + HX711 |
+| Tekanan | `machine_sensors.pressure` | Sensor diferensial, unit dari perangkat |
+| Gas | `machine_sensors.gas` | MQ-135, nilai ADC mentah |
+| Gaya pres | `machine_sensors.press` | Umpan balik screw press |
+| Batas gerak | `machine_sensors.gate` | Limit switch, boolean |
 
-| Sensor | Sumber tampilan |
-|---|---|
-| Suhu drum | `latest.suhu` |
-| Kelembapan | `latest.kelembapan` |
-| Berat kemasan | `latest.berat` |
-| Tekanan | `machine_sensors.pressure` |
-| Gas | `machine_sensors.gas` |
-| Gaya pres | `machine_sensors.press` |
-| Batas gerak | `machine_sensors.gate` |
-
-`machine_sensors` adalah ekstensi opsional `GET /api/latest`, bukan kemampuan
-server yang sudah diimplementasikan. Bentuknya:
+`machine_sensors` adalah ekstensi opsional `GET /api/latest`, belum dikirim
+server. Nilai hilang atau `null` selalu tampil sebagai "Belum ada data".
 
 ```json
 {
@@ -146,8 +157,6 @@ server yang sudah diimplementasikan. Bentuknya:
   }
 }
 ```
-
-Nilai hilang atau `null` selalu tampil sebagai "Belum ada data", bukan nol.
 
 Grafik memakai `sensor_history` dengan urutan lama → terbaru:
 
@@ -162,30 +171,8 @@ Grafik memakai `sensor_history` dengan urutan lama → terbaru:
 }
 ```
 
-Pada mode server, deret tersebut dibangun `src/api.js` dari `log`. Sensor tanpa
-deret tidak digambar; `gate` tidak punya grafik karena nilainya boolean.
-
-## Build dan deploy
-
-```bash
-npm run build
-```
-
-Hasil ada di `dist/`. Sajikan lewat HTTP, jangan membuka `index.html` dengan
-`file://`. `base: './'` membuat build tetap jalan di subpath.
-
-Untuk hosting statis tanpa reverse proxy, set `VITE_API_BASE` saat build dan
-izinkan origin tersebut di `CORS_ORIGIN` server.
-
-## Pengujian
-
-```bash
-npm run lint   # oxlint
-npm test       # node --test src/lib.test.js
-```
-
-Tes mencakup aturan klasifikasi ambang, label status, dan pembacaan sensor yang
-hilang.
+Pada mode server, deret dibangun dari `log`; sensor tanpa deret tidak digambar.
+`gate` tidak punya grafik karena nilainya boolean.
 
 ## Struktur
 
@@ -202,15 +189,35 @@ src/
   hooks/                useMediaQuery, useAnimatedNumber
 ```
 
-## Batasan
+## Pengujian
 
-- Capacitor dan proyek native Android/iOS belum ada; ini aplikasi web Ionic.
-- `machine_sensors` belum dikirim server, jadi sebagian panel menampilkan
-  "Belum ada data".
+```bash
+npm run lint   # oxlint
+npm test       # node --test src/lib.test.js
+```
+
+10 tes mencakup aturan klasifikasi ambang, label status, pembacaan sensor yang
+hilang, dan urutan keparahan batch.
+
+## Build dan deploy
+
+```bash
+npm run build
+```
+
+Hasil ada di `dist/`. Sajikan lewat HTTP, jangan membuka `index.html` dengan
+`file://`. `base: './'` membuat build tetap jalan di subpath. Untuk hosting
+statis tanpa reverse proxy, set `VITE_API_BASE` dan izinkan origin tersebut di
+`CORS_ORIGIN` server.
+
+## Batasan dan rencana
+
+- Capacitor, proyek native Android/iOS, dan build APK/IPA belum ada.
+- `machine_sensors` belum menjadi bagian response server.
 - Label klasifikasi dihitung dari ambang, bukan model Random Forest.
+- Berikutnya: autentikasi operator, riwayat batch lintas siklus, dan notifikasi.
 
-## Repo terkait
+## Status
 
-- [MUSH Server](https://github.com/rizkiramadhani-001/mush-server) — API, Prisma, PostgreSQL
-- [MUSH ML](https://github.com/rizkiramadhani-001/mush-ml) — layanan prediksi FastAPI
-- [Landing page](https://github.com/rizkiramadhani-001/landing)
+Prototipe fungsional untuk kolaborasi Pagi Farm. API dan ML berjalan terpisah;
+dashboard sudah memakai kontrak v3.1.
