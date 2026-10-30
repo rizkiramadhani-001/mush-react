@@ -1,33 +1,49 @@
-# MUSH / Field Console · Ionic React
+# MUSH React · Field Console
 
-Responsive dashboard for MUSH fermentation monitoring on mobile and desktop.
+Dashboard pemantauan fermentasi silase Pagi Farm. Satu aplikasi React yang
+menyesuaikan diri: tampilan ponsel di bawah 1024px, dasbor multi-halaman di
+layar lebar. Data produksi dibaca dari [`mush-server`](https://github.com/rizkiramadhani-001/mush-server).
 
-**Stack:** React 19, Ionic React, Vite
+**Stack:** React 19 · Ionic React 9 · Vite 8 · Recharts · Three.js
 
-## Portfolio snapshot
+## Ringkasan
 
-- One responsive product surface with separate mobile and desktop layouts
-- Mock and HTTP data adapters for local development and API integration
-- Route-based views for summary, batch detail, alerts, and account settings
-- Lint, unit test, and production build scripts
+- Empat layar: ringkasan, detail batch, peringatan, dan akun.
+- Satu sumber ambang dan data contoh di `src/config.js`.
+- Adapter data ganda: `MockApi` untuk demo, `HttpApi` untuk server.
+- Polling 10 detik, berhenti saat tab tidak terlihat.
+- Tema terang/gelap mengikuti preferensi sistem dan tersimpan di perangkat.
+- Satuan metrik, tabel target, dan label status konsisten di mobile dan desktop.
 
-**Related repositories:** [MUSH Server](https://github.com/rizkiramadhani-001/mush-server) · [MUSH ML](https://github.com/rizkiramadhani-001/mush-ml) · [MUSH landing page](https://github.com/rizkiramadhani-001/landing)
+## Alur data
 
-Dashboard pemantauan fermentasi Pagi Farm, menggunakan Ionic React, React 19,
-dan Vite. Secara default dashboard membaca data langsung dari `mush-server`
-(`USE_MOCK: false`); mode data contoh tetap tersedia lewat `src/config.js`.
+```
+mush-server ──GET /api/drums──┐
+             ──GET /api/latest?drum=B-024──┐
+                                           ▼
+                                   src/api.js (HttpApi)
+                                           │  dipetakan ke snapshot view
+                                           ▼
+                                   App.jsx ──► views/components
+```
 
-## Jalankan
+`mush-react` tidak menulis data. Input bacaan dan event berasal dari gateway
+ESP32 lewat `mush-server`.
 
-Dashboard membutuhkan `mush-server` di `http://127.0.0.1:8080`
-(lihat [MUSH Server](https://github.com/rizkiramadhani-001/mush-server)).
-Vite meneruskan `/api` dan `/health` ke port tersebut, jadi browser tidak
-terkena CORS.
+## Menjalankan
+
+Kebutuhan: Node.js 20+ dan `mush-server` yang berjalan di
+`http://127.0.0.1:8080`.
 
 ```bash
 npm install
 npm run dev
 ```
+
+Buka `http://localhost:5173`. Vite meneruskan `/api` dan `/health` ke
+`127.0.0.1:8080`, sehingga browser tidak terkena CORS.
+
+Perintah lain:
 
 ```bash
 npm run lint
@@ -36,46 +52,38 @@ npm run build
 npm run preview
 ```
 
-Build web tersedia di `dist/`. Sajikan melalui HTTP, bukan membuka `index.html`
-langsung dengan `file://`.
+## Konfigurasi
 
-## Ionic dan navigasi
+Semua pengaturan aplikasi berada di `src/config.js`.
 
-- `src/main.jsx`: `setupIonicReact()`, stylesheet Ionic, dan `IonApp`.
-- `src/components/Phone.jsx`: `IonPage`, `IonHeader`, `IonContent`, dan
-  `IonFooter`. Header dan navigasi tetap terlihat; hanya konten yang bergulir.
-- Tarik konten ke bawah untuk memperbarui data (`IonRefresher`). Tombol tengah
-  juga memperbarui data, dengan umpan balik `IonToast`.
-- Route hash: `#/ringkasan`, `#/batch`, `#/peringatan`, `#/akun`.
-  Mendukung tautan langsung, reload, serta tombol Back/Forward browser tanpa
-  aturan fallback khusus pada server.
-- Layar di bawah 1024px menggunakan tampilan mobile; layar lebih lebar memakai
-  `PcDashboard` dalam Ionic page/content. Route dan pilihan batch digunakan
-  bersama. Hanya satu halaman aktif yang di-mount pada mobile.
-- Navigasi tab dan sidebar tetap memakai komponen React proyek ini; aplikasi
-  tidak menggunakan `IonRouterOutlet` atau animasi stack navigasi Ionic.
-
-## Data
-
-`src/config.js` menyimpan ambang, seed, dan interval polling.
-`src/api.js` menyediakan `MockApi` / `HttpApi`, dipilih lewat `USE_MOCK`.
-Polling berhenti saat tab tersembunyi; HTTP request memiliki timeout delapan
-detik. Tombol simulasi hanya aktif pada mode data contoh.
-
-| Mode | `USE_MOCK` | Sumber data |
+| Nilai | Default | Keterangan |
 |---|---|---|
-| Server | `false` (default) | `GET /api/drums` + `GET /api/latest?drum=...` |
-| Contoh | `true` | `SEED` di `src/config.js` |
+| `USE_MOCK` | `false` | `true` memakai `SEED`, `false` memakai `HttpApi` |
+| `API_BASE` | `""` | Kosong = origin sama lewat proxy Vite |
+| `POLL_MS` | `10000` | Interval polling dashboard |
+| `THRESHOLDS.suhu` | `[40, 45]` | Target suhu drum (°C) |
+| `THRESHOLDS.hum` | `[55, 70]` | Target kelembapan (%RH) |
+| `THRESHOLDS.fermentDays` | `14` | Durasi fermentasi acuan |
+| `KAPASITAS_KG` | `5` | Kapasitas load cell |
+| `CHART` | `35–45` | Domain sumbu Y grafik suhu |
 
-### Koneksi ke `mush-server`
+`API_BASE` dapat dioverride saat build:
+
+```bash
+VITE_API_BASE=https://mush.pagifarm.id npm run build
+```
+
+## Koneksi ke `mush-server`
 
 `HttpApi` memanggil dua endpoint:
 
-1. `GET /api/drums` → `{ drums: [{ id }] }` untuk daftar batch.
-2. `GET /api/latest?drum=<id>` → snapshot bacaan terbaru per batch.
+| Endpoint | Dipakai untuk |
+|---|---|
+| `GET /api/drums` | Daftar batch `{ drums: [{ id }] }` |
+| `GET /api/latest?drum=<id>` | Snapshot bacaan terbaru per batch |
 
-Karena view memakai bentuk snapshot yang lebih kaya daripada kontrak v3.1,
-`src/api.js` memetakan response server:
+Kontrak server v3.1 lebih ramping daripada bentuk snapshot yang dipakai view,
+jadi `src/api.js` memetakan response:
 
 | Field view | Sumber |
 |---|---|
@@ -86,101 +94,123 @@ Karena view memakai bentuk snapshot yang lebih kaya daripada kontrak v3.1,
 | `h24`, `h7`, `log` | response `latest` |
 | `sensor_history.*` | dibangun dari `log` server |
 | `label` | default produk; server belum menyimpan label batch |
-| `machine_sensors` | belum dikirim server, ditampilkan "Belum ada data" |
+| `machine_sensors` | belum dikirim server, tampil "Belum ada data" |
 
 Deret grafik hanya dibuat bila semua nilai dalam log terisi, sehingga tidak ada
 angka pengganti saat sensor belum mengirim data.
 
-### Base URL API
+Bila `API_BASE` diisi langsung tanpa proxy, tambahkan origin dashboard ke
+`CORS_ORIGIN` di `mush-server`.
 
-`API_BASE` kosong berarti request memakai origin yang sama dan diteruskan proxy
-Vite (`vite.config.js`), untuk `dev` maupun `preview`:
+## Layar dan navigasi
 
-```js
-proxy: {
-  "/api": "http://127.0.0.1:8080",
-  "/health": "http://127.0.0.1:8080",
-}
-```
+Route hash: `#/ringkasan`, `#/batch`, `#/peringatan`, `#/akun`. Tautan langsung,
+reload, dan tombol Back/Forward browser bekerja tanpa aturan fallback server.
 
-Untuk build statis yang disajikan tanpa reverse proxy, set base URL saat build:
+- Di bawah 1024px: `Phone.jsx` dengan `IonPage`, header, konten yang bergulir,
+  dan navigasi bawah. Tarik ke bawah (`IonRefresher`) atau tombol tengah untuk
+  memperbarui data.
+- 1024px ke atas: `PcDashboard.jsx` dengan navigasi samping dan konten yang sama.
+  Hanya satu mode yang di-mount dalam satu waktu.
+- Pilihan batch disimpan di `localStorage` dan dipakai bersama oleh kedua mode.
+- Tema memakai `useSyncExternalStore`; nilai awal dari penyimpanan, lalu
+  preferensi OS.
 
-```bash
-VITE_API_BASE=http://192.168.1.10:8080 npm run build
-```
+## Sensor dan telemetri
 
-Bila `API_BASE` diisi langsung tanpa proxy, `CORS_ORIGIN` di `mush-server` harus
-memuat origin dashboard. Kontrak referensi: `../mush-dashboard/api-contract.json`
-v3.1.
+Panel sensor mengikuti proposal IoT: DS18B20 untuk suhu, load cell 5 kg + HX711
+untuk berat, sensor tekan untuk gaya pres, dan limit switch untuk batas gerak.
+Kelembapan, tekanan, dan gas masih berstatus usulan tim; ambang dan satuannya
+tidak ditebak aplikasi.
 
-## Android / iOS
+| Sensor | Sumber tampilan |
+|---|---|
+| Suhu drum | `latest.suhu` |
+| Kelembapan | `latest.kelembapan` |
+| Berat kemasan | `latest.berat` |
+| Tekanan | `machine_sensors.pressure` |
+| Gas | `machine_sensors.gas` |
+| Gaya pres | `machine_sensors.press` |
+| Batas gerak | `machine_sensors.gate` |
 
-Konversi ini mencakup aplikasi web Ionic. Capacitor, proyek native Android/iOS,
-dan build APK/IPA belum ditambahkan. `ionic.config.json` mendeskripsikan proyek
-Ionic React berbasis Vite.
-
-## Sensor MUSH
-
-Panel Sensor MUSH pada Ringkasan (mobile dan desktop) mengikuti
-`PROPOSAL BARU IOT - TERISI.docx`: sensor tekan
-(2.3.1), load cell 5 kg + HX711 dan limit switch (2.3.2), DS18B20 (2.4.1).
-Motor, penyemprot, heat sealer, RF433, dan wireless coil bukan sensor pembacaan.
-Proposal menyebut pH sebagai evaluasi kualitas, bukan sensor pH terpasang.
-
-- Suhu, kelembapan, dan berat memakai `latest.suhu`, `latest.kelembapan`, dan
-  `latest.berat` (dari `batches.berat_kg`).
-- Data pres dan limit switch merupakan telemetri lini robotik bersama,
-  bukan sensor terpisah untuk setiap drum. Kendalinya tetap pada kontroler lokal.
-- `MACHINE_SENSOR_SEED` hanya dipakai pada mode contoh; mode server
-  menampilkan "Belum ada data" sampai ada telemetri.
-- `machine_sensors` adalah ekstensi opsional response `GET /api/latest` untuk
-  frontend ini, belum endpoint atau kemampuan server yang telah diimplementasikan.
+`machine_sensors` adalah ekstensi opsional `GET /api/latest`, bukan kemampuan
+server yang sudah diimplementasikan. Bentuknya:
 
 ```json
 {
   "machine_sensors": {
-    "press": null,
-    "gate": null
+    "press": { "value": 480, "unit": "N", "target_reached": true, "updated_at": "10:42" },
+    "gate": { "limit_reached": false, "updated_at": "10:42" },
+    "pressure": { "value": 101.8, "unit": "kPa", "updated_at": "10:42" },
+    "gas": { "value": 1240, "unit": "ppm", "updated_at": "10:42" }
   }
 }
 ```
 
-Saat tersedia, isi objek berikut dari pengukuran/keputusan kontroler:
+Nilai hilang atau `null` selalu tampil sebagai "Belum ada data", bukan nol.
 
-| Objek | Field | Arti |
-|---|---|---|
-| `press` | `value` (number), `unit` (string) | Gaya/tekanan terkalibrasi, unit wajib dari perangkat |
-| `press` | `target_reached` (boolean) | Keputusan batas pres dari kontroler |
-| `gate` | `limit_reached` (boolean) | Kontak batas terpicu; tidak menyimpulkan pintu terbuka/tertutup |
-| Semua objek | `updated_at` (string) | Waktu pengukuran robotik, terpisah dari suhu drum |
-
-Nilai hilang/null ditampilkan sebagai belum tersedia, bukan nol atau offline.
-Tidak ada batas tekanan atau unit yang diasumsikan oleh aplikasi. Field kelembapan
-lama tetap dipertahankan, dengan catatan model sensor tidak ditentukan proposal.
-
-### Grafik tren
-
-Grafik pada panel sensor memakai `sensor_history` dari `GET /api/latest`:
+Grafik memakai `sensor_history` dengan urutan lama → terbaru:
 
 ```json
 {
   "sensor_history": {
     "temperature": [40.9, 41.0],
     "humidity": [61, 62],
-    "press": [470, 480],
     "pressure": [101.6, 101.8],
     "gas": [1180, 1240]
   }
 }
 ```
 
-Pada mode server, deret tersebut dibangun `src/api.js` dari `log` pembacaan.
+Pada mode server, deret tersebut dibangun `src/api.js` dari `log`. Sensor tanpa
+deret tidak digambar; `gate` tidak punya grafik karena nilainya boolean.
 
-- Deret dibaca dari indeks 0 (24 jam lalu) ke indeks terakhir (bacaan terkini).
-- `temperature` dan `humidity` boleh memakai pita target. `pressure` dan `gas`
-  digambar tanpa pita karena ambangnya belum ditetapkan tim.
-- Sensor tanpa deret tidak digambar. `gate` tidak punya grafik karena nilainya
-  boolean, bukan angka.
-- Pada mode contoh, `sensorHistory()` di `src/config.js` membuat deret 24 jam
-  deterministik yang dihitung mundur dari nilai terkini, sehingga titik terakhir
-  selalu sama dengan bacaan live.
+## Build dan deploy
+
+```bash
+npm run build
+```
+
+Hasil ada di `dist/`. Sajikan lewat HTTP, jangan membuka `index.html` dengan
+`file://`. `base: './'` membuat build tetap jalan di subpath.
+
+Untuk hosting statis tanpa reverse proxy, set `VITE_API_BASE` saat build dan
+izinkan origin tersebut di `CORS_ORIGIN` server.
+
+## Pengujian
+
+```bash
+npm run lint   # oxlint
+npm test       # node --test src/lib.test.js
+```
+
+Tes mencakup aturan klasifikasi ambang, label status, dan pembacaan sensor yang
+hilang.
+
+## Struktur
+
+```
+src/
+  App.jsx               state global, routing hash, polling, pemilihan batch
+  api.js                MockApi / HttpApi + pemetaan response server
+  config.js             ambang, seed, daftar sensor, interval
+  lib.js                format, klasifikasi, urutan keparahan
+  sensors.js            nilai dan deret sensor untuk komponen
+  theme.js              tema terang/gelap
+  components/           Phone, TopBar, BottomNav, grafik, panel sensor, Drum3D
+  views/                Ringkasan, BatchDetail, Peringatan, Akun, PcDashboard
+  hooks/                useMediaQuery, useAnimatedNumber
+```
+
+## Batasan
+
+- Capacitor dan proyek native Android/iOS belum ada; ini aplikasi web Ionic.
+- `machine_sensors` belum dikirim server, jadi sebagian panel menampilkan
+  "Belum ada data".
+- Label klasifikasi dihitung dari ambang, bukan model Random Forest.
+
+## Repo terkait
+
+- [MUSH Server](https://github.com/rizkiramadhani-001/mush-server) — API, Prisma, PostgreSQL
+- [MUSH ML](https://github.com/rizkiramadhani-001/mush-ml) — layanan prediksi FastAPI
+- [Landing page](https://github.com/rizkiramadhani-001/landing)
