@@ -1,7 +1,7 @@
 /* Satu-satunya tempat untuk ambang, data contoh, dan interval. */
 export const CONFIG = {
-  USE_MOCK: true, // false → pakai HttpApi ke server beneran
-  API_BASE: "", // mis. "https://mush.pagifarm.id"
+  USE_MOCK: false, // false → pakai HttpApi ke server beneran
+  API_BASE: import.meta.env?.VITE_API_BASE ?? "", // kosong → lewat proxy Vite / origin yang sama
   POLL_MS: 10_000,
   VERSION: "v4-react",
   THRESHOLDS: {

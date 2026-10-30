@@ -3,6 +3,8 @@ import { CONFIG, SEED, MACHINE_SENSOR_SEED, sensorHistory } from "./config";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const DEFAULT_LABEL = "Pakan silase premium · 5 kg";
+
 function snapshot(drumId) {
   const s = SEED[drumId];
   return {
@@ -23,6 +25,49 @@ function snapshot(drumId) {
     log: s.log.map((r) => ({ ...r })),
     machine_sensors: structuredClone(MACHINE_SENSOR_SEED),
     sensor_history: sensorHistory(drumId),
+  };
+}
+
+/* Deret grafik dari log bacaan server. Sensor tanpa nilai lengkap tidak
+   dibuat, supaya grafik tidak menampilkan angka palsu. */
+function seriesFrom(log, key) {
+  const values = log
+    .map((row) => (row[key] == null ? null : Number(row[key])))
+    .reverse();
+  return values.length && values.every(Number.isFinite) ? values : null;
+}
+
+/* Kontrak server v3.1 lebih ramping dari bentuk snapshot yang dipakai view.
+   Field yang tidak dikirim server diisi netral, bukan telemetri karangan. */
+function fromServer(body) {
+  const log = Array.isArray(body.log) ? body.log : [];
+  return {
+    drum_id: body.drum_id,
+    label: body.label ?? DEFAULT_LABEL,
+    started: body.started ?? "belum dicatat",
+    suhu: Number(body.suhu),
+    kelembapan: body.kelembapan ?? null,
+    tekanan: body.tekanan ?? null,
+    gas: body.gas ?? null,
+    berat: body.berat == null ? null : Number(body.berat),
+    kapasitas_kg: CONFIG.KAPASITAS_KG,
+    hari: body.hari ?? 0,
+    total_hari: body.total_hari ?? CONFIG.THRESHOLDS.fermentDays,
+    progres_pct: body.progres_pct ?? 0,
+    sinkron: body.sinkron ?? "--:--",
+    sumber: body.sumber ?? `sensor drum ${body.drum_id}`,
+    status: body.status,
+    ml_label: body.ml_label,
+    h24: Array.isArray(body.h24) ? body.h24 : [],
+    h7: Array.isArray(body.h7) ? body.h7 : [],
+    log: log.map((row) => ({ ...row })),
+    machine_sensors: undefined,
+    sensor_history: {
+      temperature: seriesFrom(log, "suhu"),
+      humidity: seriesFrom(log, "hum"),
+      pressure: seriesFrom(log, "tekanan"),
+      gas: seriesFrom(log, "gas"),
+    },
   };
 }
 
@@ -50,11 +95,21 @@ const HttpApi = {
       clearTimeout(t);
     }
   },
-  getDrums() {
-    return this._get("/api/drums");
+  async getDrums() {
+    const body = await this._get("/api/drums");
+    const ids = (body.drums ?? []).map((drum) => drum.id).filter(Boolean);
+    const results = await Promise.allSettled(
+      ids.map((id) => this.getLatest(id)),
+    );
+    return results
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
   },
-  getLatest(drumId) {
-    return this._get(`/api/latest?drum=${encodeURIComponent(drumId)}`);
+  async getLatest(drumId) {
+    const body = await this._get(
+      `/api/latest?drum=${encodeURIComponent(drumId)}`,
+    );
+    return fromServer(body);
   },
 };
 

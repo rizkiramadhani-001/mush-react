@@ -4,7 +4,7 @@
    Animasi: pergantian halaman memakai fade+naik 260ms (kontinuitas
    ruang antar halaman, MOTION 2), indikator aktif statis tanpa loop. */
 import { Suspense, lazy, useState } from "react";
-import { classify, fmtTemp, liveEventsFor, worstFirst, drumTone } from "../lib";
+import { classify, fmtBerat, fmtTemp, liveEventsFor, worstFirst, drumTone } from "../lib";
 import { CONFIG, EVENTS } from "../config";
 import BottomNav from "../components/BottomNav";
 import SensorPanel from "../components/SensorPanel";
@@ -214,7 +214,7 @@ function PageRingkasan({ latest, drums, drumId, sLo, sHi, hLo, hHi, onSelectDrum
             <div className="fill" style={{ "--p": latest.progres_pct / 100 }} />
           </div>
           <small className="muted">
-            Mulai: {latest.started} · {latest.label} · {latest.berat.toFixed(1)} kg
+            Mulai: {latest.started} · {latest.label} · {fmtBerat(latest.berat)}
           </small>
         </div>
       </section>
@@ -321,7 +321,7 @@ function PageBatch({ latest, drums, drumId, onSelectDrum }) {
         </div>
         <div className="card mini-stat">
           <small className="muted">Berat paket · maks {latest.kapasitas_kg} kg</small>
-          <strong className="tabular">{latest.berat.toFixed(1)} kg</strong>
+          <strong className="tabular">{fmtBerat(latest.berat)}</strong>
           <small className="muted">
             Progres {latest.progres_pct}% · {c.action}
           </small>
@@ -424,7 +424,7 @@ function PagePeringatan({ latest, drums, drumId }) {
           <span className="ctl-status">{c.ml}</span>
         </div>
         <p className="small">
-          {latest.log.length} sensor readings · {latest.berat.toFixed(1)} kg paket
+          {latest.log.length} sensor readings · {fmtBerat(latest.berat)}
         </p>
         <div className="ctl-tabs" role="tablist" aria-label="Filter kejadian">
           {[
@@ -450,7 +450,7 @@ function PagePeringatan({ latest, drums, drumId }) {
           <PcMetric icon="temp" value={`${fmtTemp(latest.suhu)}°C`} label="Suhu drum" sub={`Target ${sLo}–${sHi}`} />
           <PcMetric icon="drop" value={`${latest.kelembapan}%`} label="Moisture" sub={`Target ${hLo}–${hHi}`} />
           <PcMetric icon="wind" value={`${latest.hari} hr`} label="Fermentasi" sub={`dari ${latest.total_hari}`} />
-          <PcMetric icon="rain" value={latest.berat.toFixed(1)} label="Berat kg" sub={`maks ${latest.kapasitas_kg}`} />
+          <PcMetric icon="rain" value={Number.isFinite(latest.berat) ? latest.berat.toFixed(1) : "—"} label="Berat kg" sub={`maks ${latest.kapasitas_kg}`} />
         </div>
         <div className="stat-row">
           <div className="card stat-mini">
@@ -573,7 +573,7 @@ function PageAkun({ latest }) {
             </li>
             <li>
               <span>Load cell 5 kg + Heat sealer</span>
-              <strong className="tag ok small">{latest.berat.toFixed(1)} kg</strong>
+              <strong className="tag ok small">{fmtBerat(latest.berat)}</strong>
             </li>
           </ul>
           <p className="small muted" style={{ marginTop: 10 }}>

@@ -33,7 +33,7 @@ export default function App() {
     const route = window.location.hash.slice(2);
     return TABS.includes(route) ? route : stored("mush.tab", "ringkasan", (v) => TABS.includes(v));
   });
-  const [drumId, setDrumId] = useState(() => stored("mush.drum", "B-024", (v) => Boolean(SEED[v])));
+  const [drumId, setDrumId] = useState(() => stored("mush.drum", "", (v) => Boolean(v)));
   const [drums, setDrums] = useState([]);
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,14 @@ export default function App() {
 
   const refresh = useCallback(async (announce = false) => {
     try {
-      const [d, l] = await Promise.all([Api.getDrums(), Api.getLatest(drumRef.current)]);
+      const d = await Api.getDrums();
+      let id = drumRef.current;
+      if (!d.some((item) => item.drum_id === id)) id = d[0]?.drum_id ?? "";
+      const l = id ? await Api.getLatest(id) : null;
+      if (id !== drumRef.current) {
+        drumRef.current = id;
+        setDrumId(id);
+      }
       setDrums(d);
       setLatest(l);
       setLoading(false);
@@ -72,7 +79,7 @@ export default function App() {
 
   const selectDrum = useCallback(
     async (id) => {
-      if (!SEED[id] || drumRef.current === id) return;
+      if (drumRef.current === id) return;
       drumRef.current = id;
       setDrumId(id);
       setLoading(true);
@@ -83,7 +90,12 @@ export default function App() {
   );
 
   const simulate = useCallback(() => {
+    if (!CONFIG.USE_MOCK) {
+      showToast("Simulasi hanya tersedia pada mode data contoh.");
+      return;
+    }
     const s = SEED[drumRef.current];
+    if (!s) return;
     s.suhu = +(s.suhu + (Math.random() - 0.5) * 0.4).toFixed(1);
     s.hum = Math.max(50, Math.min(75, s.hum + Math.round((Math.random() - 0.5) * 2)));
     s.h24.push(s.suhu);

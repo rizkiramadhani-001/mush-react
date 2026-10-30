@@ -1,7 +1,7 @@
 /* Layar BATCH ala referensi layar 2: kartu sambutan hijau,
    grid 2x2 batch, dua kartu timbangan. */
 import { Suspense, lazy } from "react";
-import { fmtTemp, classify } from "../lib";
+import { fmtBerat, fmtTemp, classify } from "../lib";
 import { CONFIG } from "../config";
 import SensorStrip from "../components/SensorStrip";
 
@@ -70,7 +70,7 @@ export default function BatchDetail({ latest, drums = [], drumId, onSelectDrum }
               </svg>
             </span>
             <small className="muted">Berat paket</small>
-            <strong className="tabular">{latest.berat.toFixed(1)} kg</strong>
+            <strong className="tabular">{fmtBerat(latest.berat)}</strong>
             <small className="muted">maks {latest.kapasitas_kg} kg</small>
             <div
               className="bar"
@@ -78,9 +78,9 @@ export default function BatchDetail({ latest, drums = [], drumId, onSelectDrum }
               aria-label="Kapasitas paket"
               aria-valuemin="0"
               aria-valuemax={latest.kapasitas_kg}
-              aria-valuenow={latest.berat}
+              aria-valuenow={latest.berat ?? 0}
             >
-              <div className="fill" style={{ "--p": latest.berat / latest.kapasitas_kg }} />
+              <div className="fill" style={{ "--p": (latest.berat ?? 0) / latest.kapasitas_kg }} />
             </div>
           </div>
           <div className="card mini-stat">

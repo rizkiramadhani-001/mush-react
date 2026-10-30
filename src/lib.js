@@ -5,6 +5,9 @@ import { CONFIG } from "./config.js";
 
 export const fmtTemp = (v) => Number(v).toFixed(1);
 
+export const fmtBerat = (v) =>
+  Number.isFinite(v) ? `${Number(v).toFixed(1)} kg` : "Belum ditimbang";
+
 export function classify(
   suhu,
   hum,

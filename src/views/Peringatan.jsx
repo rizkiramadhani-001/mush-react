@@ -1,7 +1,7 @@
 /* Layar KONTROLER ala referensi layar 4: kartu hijau status,
    4 metrik, 3 status, statistik + daftar kejadian. */
 import { Suspense, lazy, useState } from "react";
-import { fmtTemp, classify, liveEventsFor, drumTone } from "../lib";
+import { fmtBerat, fmtTemp, classify, liveEventsFor, drumTone } from "../lib";
 import { CONFIG, EVENTS } from "../config";
 import SensorStrip from "../components/SensorStrip";
 
@@ -40,7 +40,7 @@ export default function Peringatan({ latest, drums = [] }) {
             <span className="ctl-status">{c.ml}</span>
           </div>
           <p className="small">
-            {latest.log.length} sensor readings · {latest.berat.toFixed(1)} kg paket
+            {latest.log.length} sensor readings · {fmtBerat(latest.berat)}
           </p>
           <div className="ctl-tabs" role="tablist" aria-label="Filter kejadian">
             {[
@@ -66,7 +66,7 @@ export default function Peringatan({ latest, drums = [] }) {
           <Metric icon="temp" value={`${fmtTemp(latest.suhu)}°C`} label="Suhu drum" sub={`Target ${sLo}–${sHi}`} />
           <Metric icon="drop" value={`${latest.kelembapan}%`} label="Moisture" sub={`Target ${hLo}–${hHi}`} />
           <Metric icon="wind" value={`${latest.hari} hr`} label="Fermentasi" sub={`dari ${latest.total_hari}`} />
-          <Metric icon="rain" value={`${latest.berat.toFixed(1)}`} label="Berat kg" sub={`maks ${latest.kapasitas_kg}`} />
+          <Metric icon="rain" value={Number.isFinite(latest.berat) ? latest.berat.toFixed(1) : "—"} label="Berat kg" sub={`maks ${latest.kapasitas_kg}`} />
         </div>
 
         <div className="stat-row">
