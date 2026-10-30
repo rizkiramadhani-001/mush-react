@@ -14,9 +14,15 @@ Responsive dashboard for MUSH fermentation monitoring on mobile and desktop.
 **Related repositories:** [MUSH Server](https://github.com/rizkiramadhani-001/mush-server) · [MUSH ML](https://github.com/rizkiramadhani-001/mush-ml) · [MUSH landing page](https://github.com/rizkiramadhani-001/landing)
 
 Dashboard pemantauan fermentasi Pagi Farm, menggunakan Ionic React, React 19,
-dan Vite. Data contoh aktif secara default melalui `src/config.js`.
+dan Vite. Secara default dashboard membaca data langsung dari `mush-server`
+(`USE_MOCK: false`); mode data contoh tetap tersedia lewat `src/config.js`.
 
 ## Jalankan
+
+Dashboard membutuhkan `mush-server` di `http://127.0.0.1:8080`
+(lihat [MUSH Server](https://github.com/rizkiramadhani-001/mush-server)).
+Vite meneruskan `/api` dan `/health` ke port tersebut, jadi browser tidak
+terkena CORS.
 
 ```bash
 npm install
@@ -52,15 +58,60 @@ langsung dengan `file://`.
 ## Data
 
 `src/config.js` menyimpan ambang, seed, dan interval polling.
-`src/api.js` menyediakan MockApi / HttpApi. Polling berhenti saat tab tersembunyi;
-HTTP request memiliki timeout delapan detik. Simulasi data tersedia pada tombol
-demo desktop, bukan pada tombol sinkronisasi mobile.
+`src/api.js` menyediakan `MockApi` / `HttpApi`, dipilih lewat `USE_MOCK`.
+Polling berhenti saat tab tersembunyi; HTTP request memiliki timeout delapan
+detik. Tombol simulasi hanya aktif pada mode data contoh.
 
-Untuk backend, gunakan `USE_MOCK: false` dan `API_BASE` di konfigurasi.
-Kontrak referensi tersedia di `../mush-dashboard/api-contract.json`.
-Perhatikan bahwa adapter React saat ini mengharapkan `getDrums()` berupa array
-snapshot lengkap; kontrak v3.1 mengembalikan `{ drums: [{ id }] }`. Adapter API
-perlu disamakan sebelum memakai server tersebut.
+| Mode | `USE_MOCK` | Sumber data |
+|---|---|---|
+| Server | `false` (default) | `GET /api/drums` + `GET /api/latest?drum=...` |
+| Contoh | `true` | `SEED` di `src/config.js` |
+
+### Koneksi ke `mush-server`
+
+`HttpApi` memanggil dua endpoint:
+
+1. `GET /api/drums` → `{ drums: [{ id }] }` untuk daftar batch.
+2. `GET /api/latest?drum=<id>` → snapshot bacaan terbaru per batch.
+
+Karena view memakai bentuk snapshot yang lebih kaya daripada kontrak v3.1,
+`src/api.js` memetakan response server:
+
+| Field view | Sumber |
+|---|---|
+| `suhu`, `kelembapan`, `tekanan`, `gas` | response `latest` |
+| `hari`, `total_hari`, `progres_pct` | response `latest` |
+| `berat` | `batches.berat_kg` lewat response `latest` |
+| `started` | `batches.tanggal_mulai` lewat response `latest` |
+| `h24`, `h7`, `log` | response `latest` |
+| `sensor_history.*` | dibangun dari `log` server |
+| `label` | default produk; server belum menyimpan label batch |
+| `machine_sensors` | belum dikirim server, ditampilkan "Belum ada data" |
+
+Deret grafik hanya dibuat bila semua nilai dalam log terisi, sehingga tidak ada
+angka pengganti saat sensor belum mengirim data.
+
+### Base URL API
+
+`API_BASE` kosong berarti request memakai origin yang sama dan diteruskan proxy
+Vite (`vite.config.js`), untuk `dev` maupun `preview`:
+
+```js
+proxy: {
+  "/api": "http://127.0.0.1:8080",
+  "/health": "http://127.0.0.1:8080",
+}
+```
+
+Untuk build statis yang disajikan tanpa reverse proxy, set base URL saat build:
+
+```bash
+VITE_API_BASE=http://192.168.1.10:8080 npm run build
+```
+
+Bila `API_BASE` diisi langsung tanpa proxy, `CORS_ORIGIN` di `mush-server` harus
+memuat origin dashboard. Kontrak referensi: `../mush-dashboard/api-contract.json`
+v3.1.
 
 ## Android / iOS
 
@@ -76,10 +127,12 @@ Panel Sensor MUSH pada Ringkasan (mobile dan desktop) mengikuti
 Motor, penyemprot, heat sealer, RF433, dan wireless coil bukan sensor pembacaan.
 Proposal menyebut pH sebagai evaluasi kualitas, bukan sensor pH terpasang.
 
-- Suhu menggunakan `latest.suhu`; berat menggunakan field lama `latest.berat`.
+- Suhu, kelembapan, dan berat memakai `latest.suhu`, `latest.kelembapan`, dan
+  `latest.berat` (dari `batches.berat_kg`).
 - Data pres dan limit switch merupakan telemetri lini robotik bersama,
   bukan sensor terpisah untuk setiap drum. Kendalinya tetap pada kontroler lokal.
-- `MACHINE_SENSOR_SEED` di `src/config.js` bernilai null sampai ada data.
+- `MACHINE_SENSOR_SEED` hanya dipakai pada mode contoh; mode server
+  menampilkan "Belum ada data" sampai ada telemetri.
 - `machine_sensors` adalah ekstensi opsional response `GET /api/latest` untuk
   frontend ini, belum endpoint atau kemampuan server yang telah diimplementasikan.
 
@@ -121,9 +174,11 @@ Grafik pada panel sensor memakai `sensor_history` dari `GET /api/latest`:
 }
 ```
 
+Pada mode server, deret tersebut dibangun `src/api.js` dari `log` pembacaan.
+
 - Deret dibaca dari indeks 0 (24 jam lalu) ke indeks terakhir (bacaan terkini).
-- `temperature` dan `humidity` boleh memakai pita target. `press`, `pressure`, dan
-  `gas` digambar tanpa pita karena ambangnya belum ditetapkan tim.
+- `temperature` dan `humidity` boleh memakai pita target. `pressure` dan `gas`
+  digambar tanpa pita karena ambangnya belum ditetapkan tim.
 - Sensor tanpa deret tidak digambar. `gate` tidak punya grafik karena nilainya
   boolean, bukan angka.
 - Pada mode contoh, `sensorHistory()` di `src/config.js` membuat deret 24 jam
